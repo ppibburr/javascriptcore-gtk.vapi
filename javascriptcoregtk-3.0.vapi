@@ -25,7 +25,7 @@
 
 // Retrieved from: http://gitorious.org/seed-vapi/seed-vapi/blobs/master/javascriptcore.vapi
 
-[CCode (lower_case_cprefix = "js_", cheader_filename = "JavaScriptCore/JavaScript.h")]
+[CCode (lower_case_cprefix = "JS", cheader_filename = "JavaScriptCore/JavaScript.h")]
 namespace JSCore {
 	[Compact]
 	[CCode (cname = "void", free_function = "JSContextGroupRelease")]
@@ -43,7 +43,7 @@ namespace JSCore {
 	public class Context {
 		/* Script Evaluation */
 		[CCode (cname = "JSEvaluateScript")]
-		public unowned Value evaluate_script (String script,
+		public Value evaluate_script (String script,
 		                                      Object? thisObject,
 		                                      String? sourceURL,
 		                                      int startingLineNumber,
@@ -70,7 +70,7 @@ namespace JSCore {
 	[CCode (cname = "void", free_function = "JSGlobalContextRelease")]
 	public class GlobalContext: Context {
 		[CCode (cname = "JSGlobalContextCreate")]
-		public GlobalContext (Class globalObjectClass);
+		public GlobalContext (Class? globalObjectClass);
 
 		[CCode (cname = "JSGlobalContextCreateInGroup")]
 		public GlobalContext.in_group (ContextGroup group, Class globalObjectClass);
@@ -122,12 +122,12 @@ namespace JSCore {
 	}
 
 
-	[CCode (has_target = false)]
+	[CCode (has_target = false, cname="JSObjectInitializeCallback")]
 	public delegate void                  ObjectInitializeCallback        (Context ctx,
 	                                                                      JSCore.Object object);
 
-	[CCode (has_target = false)]
-	public delegate void                  ObjectFinalizeCallback          (JSCore.Object object);
+	[CCode (has_target = false, cname="JSObjectFinalizeCallback")]
+	public static delegate void                  ObjectFinalizeCallback          ( JSCore.Object object);
 
 	[CCode (has_target = false)]
 	public delegate bool                  ObjectHasPropertyCallback       (Context ctx,
@@ -169,8 +169,8 @@ namespace JSCore {
 	[CCode (has_target = false)]
 	public delegate JSCore.Object ObjectCallAsConstructorCallback (Context ctx,
 	                                                                       JSCore.Object constructor,
-                                                                           [CCode (array_length_pos=3.9, array_length_type="size_t")]
-	                                                                       JSCore.Value[] arguments,
+                                                                           [CCode (array_length_pos=2.9, array_length_type="size_t")]
+	                                                                       JSCore.ConstValue[] arguments,
 	                                                                       out JSCore.Value exception);
 
 	[CCode (has_target = false)]
@@ -191,34 +191,35 @@ namespace JSCore {
 		public ObjectSetPropertyCallback setProperty;
 		public PropertyAttribute attributes;
 	}
-
+    [CCode (cname="JSStaticFunction", cprefix="")]
 	public struct StaticFunction {
-		public string name;
+		//[CCode (cname="const char *name")]
+		public weak string name;
 		public ObjectCallAsFunctionCallback callAsFunction;
-		public PropertyAttribute attributes;
+		public unowned PropertyAttribute attributes;
 	}
-
+    [CCode (cname="JSClassDefinition", cprefix="")]
 	public struct ClassDefinition {
-		public int version;
-		public ClassAttribute attributes;
+		public unowned int? version;
+		public unowned ClassAttribute? attributes;
 
-		public string className;
-		public JSCore.Class parentClass;
+		public unowned string? className;
+		public unowned JSCore.Class? parentClass;
 
-		public StaticValue *staticValues;
-		public StaticFunction *staticFunction;
+		public unowned StaticValue *staticValues;
+		public unowned StaticFunction *staticFunctions;
 
-		public ObjectInitializeCallback          initialize;
-		public ObjectFinalizeCallback            finalize;
-		public ObjectHasPropertyCallback         hasProperty;
-		public ObjectGetPropertyCallback         getProperty;
-		public ObjectSetPropertyCallback         setProperty;
-		public ObjectDeletePropertyCallback      deleteProperty;
-		public ObjectGetPropertyNamesCallback    getPropertyNames;
+		public ObjectInitializeCallback         initialize;
+		public ObjectFinalizeCallback           finalize;
+		public ObjectHasPropertyCallback?         hasProperty;
+		public ObjectGetPropertyCallback?         getProperty;
+		public ObjectSetPropertyCallback?         setProperty;
+		public ObjectDeletePropertyCallback?      deleteProperty;
+		public ObjectGetPropertyNamesCallback?    getPropertyNames;
 		public ObjectCallAsFunctionCallback      callAsFunction;
-		public ObjectCallAsConstructorCallback   callAsConstructor;
-		public ObjectHasInstanceCallback         hasInstance;
-		public ObjectConvertToTypeCallback       convertToType;
+		public ObjectCallAsConstructorCallback?   callAsConstructor;
+		public ObjectHasInstanceCallback?         hasInstance;
+		public ObjectConvertToTypeCallback?       convertToType;
 	}
 
 	[CCode (cname="kJSClassDefinitionEmpty")]
@@ -235,7 +236,7 @@ namespace JSCore {
 	[CCode (cname = "void", free_function = "JSClassRelease")]
 	public class Class {
 		[CCode (cname="JSClassCreate")]
-		public Class (ClassDefinition definition);
+		public Class (ref ClassDefinition definition);
 
 		[CCode (cname="JSClassRetain")]
 		public Class retain (Class js_class);
@@ -315,7 +316,10 @@ namespace JSCore {
 		[CCode (cname = "JSValueIsObject", instance_pos=1.1)]
 		public bool is_object (Context ctx);
 
-		[CCode (cname = "JSValueIsNull", instance_pos=1.1)]
+		//[CCode (cname = "JSValueIsNull", instance_pos=1.1)]
+		//public bool is_null (Context ctx);	
+			
+		[CCode (cname = "JSValueIsObjectOfClass", instance_pos=1.1)]			
 		public bool is_object_of_class (Context ctx, Value js_value, Class js_class);
 
 		[CCode (cname = "JSValueIsEqual", instance_pos=1.1)]
@@ -358,7 +362,7 @@ namespace JSCore {
 	[CCode (cname = "struct OpaqueJSValue", free_function = "")]
 	public class Object: JSCore.Value {
 		[CCode (cname = "JSObjectMake")]
-		public Object (Context ctx, Class js_class, void *data);
+		public Object (Context ctx, Class? js_class, void *data);
 
 		[CCode (cname = "JSObjectMakeFunctionWithCallback")]
 		public Object.function_with_callback (Context ctx, JSCore.String name,
@@ -390,15 +394,15 @@ namespace JSCore {
 
 		[CCode (cname = "JSObjectMakeFunction")]
 		public Object.function (Context ctx, JSCore.String name,
-		                        uint parameter_count, JSCore.String[] parameter_names,
-		                        JSCore.String body, JSCore.String source_url,
+		                        uint parameter_count, JSCore.String[]? parameter_names,
+		                        JSCore.String body, JSCore.String? source_url,
 		                        int starting_line_number, out JSCore.Value exception);
 
 		[CCode (cname = "JSObjectGetPrototype", instance_pos=1.1)]
 		public JSCore.Value get_prototype (Context ctx);
 
 		[CCode (cname = "JSObjectSetPrototype", instance_pos=1.1)]
-		public JSCore.Value set_prototype (Context ctx, JSCore.Value _value);
+		public void set_prototype (Context ctx, JSCore.Value _value);
 
 		[CCode (cname = "JSObjectHasProperty", instance_pos=1.1)]
 		public bool has_property (Context ctx, JSCore.String propertyName);
@@ -425,11 +429,11 @@ namespace JSCore {
 		                                   JSCore.Value _value,
 		                                   out JSCore.Value exception);
 
-		[CCode (cname = "JSObjectGetPrivate")]
-		public void *get_private ();
+		[CCode (cname = "JSObjectGetPrivate", simple_generics=true)]
+		public unowned T get_private<T>();
 
-		[CCode (cname = "JSObjectSetPrivate")]
-		public bool set_private (void *data);
+		[CCode (cname = "JSObjectSetPrivate", simple_generics=true)]
+		public bool set_private<T> (T data);
 
 		[CCode (cname = "JSObjectIsFunction", instance_pos=1.1)]
 		public bool is_function (Context ctx);
