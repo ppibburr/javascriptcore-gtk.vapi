@@ -374,7 +374,7 @@ namespace JSCore {
 
 		[CCode (cname = "JSObjectMakeArray")]
 		public Object.array (Context ctx, size_t argument_count,
-		                     JSCore.Value[] arguments,
+		                     [CCode (array_length = false)] void*[] arguments,
 		                     out JSCore.Value exception);
 
 		[CCode (cname = "JSObjectMakeDate")]
